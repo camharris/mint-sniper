@@ -1,0 +1,17 @@
+{
+  "name": "mint-sniper",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@flashbots/ethers-provider-bundle": "^0.4.3",
+    "@types/node": "^17.0.16",
+    "ethers": "^5.5.4",
+    "flashbots": "^1.0.0"
+  }
+}
