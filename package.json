@@ -10,8 +10,10 @@
   "license": "ISC",
   "devDependencies": {
     "@flashbots/ethers-provider-bundle": "^0.4.3",
+    "@nomiclabs/hardhat-etherscan": "^3.0.0",
     "@types/node": "^17.0.16",
     "ethers": "^5.5.4",
-    "flashbots": "^1.0.0"
+    "flashbots": "^1.0.0",
+    "hardhat": "^2.8.3"
   }
 }
