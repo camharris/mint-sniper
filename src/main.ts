@@ -10,11 +10,11 @@ const walletSigner = mainWallet.connect(provider);
 
 
 function createTempWallets(num: number){
-    let wallets: Wallet[]
+    var wallets: Wallet[] = [];
     for (let i = 0; i < num; i++){
         var wallet = ethers.Wallet.createRandom()
         console.log(`created wallet #${i+1}: ${wallet.address}`)
-        wallets.push(wallet)
+        wallets?.push(wallet)
     }
     return wallets
 }
@@ -32,10 +32,7 @@ async function init() {
         // Calculate what the estimated network gas fees + plush nft price
         // TODO: Should probably add a little more than needed in case gas fees change
         var estGas = await provider.getGasPrice();
-        var fundAmt = estGas.add(
-            ethers.BigNumber.from(
-                ethers.utils.parseEther(price)      
-            ));
+        var fundAmt = estGas.add(ethers.BigNumber.from(price));
 
 
         // Generate wallets
@@ -53,7 +50,7 @@ async function init() {
                 gasPrice: estGas
             }
 
-            console.log(`Funding wallet: `)
+            console.log(`Funding wallet: ${wallet.address}`)
             walletSigner.sendTransaction(tx).then((txObj) => {
                 console.log(txObj)
             })
