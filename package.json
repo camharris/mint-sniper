@@ -10,8 +10,13 @@
   "license": "ISC",
   "devDependencies": {
     "@flashbots/ethers-provider-bundle": "^0.4.3",
+    "@nomiclabs/hardhat-ethers": "^2.0.4",
     "@nomiclabs/hardhat-etherscan": "^3.0.0",
+    "@nomiclabs/hardhat-waffle": "^2.0.2",
+    "@openzeppelin/contracts": "^4.5.0",
     "@types/node": "^17.0.16",
+    "chai": "^4.3.6",
+    "ethereum-waffle": "^3.4.0",
     "ethers": "^5.5.4",
     "flashbots": "^1.0.0",
     "hardhat": "^2.8.3"
