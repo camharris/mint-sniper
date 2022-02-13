@@ -168,7 +168,7 @@ contract AdidasOriginals is AbstractERC1155Factory, PaymentSplitter  {
     * @param amount the amount of tokens to purchase
     */
     function purchase(uint256 amount) external payable whenNotPaused {
-        require(block.timestamp >= purchaseWindowOpens && block.timestamp <= purchaseWindowCloses, "Purchase: window closed");
+        // require(block.timestamp >= purchaseWindowOpens && block.timestamp <= purchaseWindowCloses, "Purchase: window closed");
         require(purchaseTxs[msg.sender] < maxTxPublic , "max tx amount exceeded");
 
         _purchase(amount);

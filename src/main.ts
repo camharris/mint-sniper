@@ -34,7 +34,22 @@ async function init() {
         // Calculate what the estimated network gas fees + plush nft price
         // TODO: Should probably add a little more than needed in case gas fees change
         var estGas = await provider.getGasPrice();
+        var maxGas = estGas.mul(ethers.BigNumber.from(10))
+        // var maxFeePerGas = await provider. 
+
+        var feeData = await provider.getFeeData();
+        // var combinedFees = feeData.gasPrice?.add(
+        //     feeData.maxFeePerGas?.add(
+        //         feeData.maxPriorityFeePerGas
+        //     ));
+        // Triple the combinedFees for 3 potential transactions
+        // combinedFees = combinedFees.mul(ethers.BigNumber.from(3));
+
+        // var fundAmt = estGas.add(ethers.BigNumber.from(price));
         var fundAmt = estGas.add(ethers.BigNumber.from(price));
+        // throw in an extra 0.1 eth to account for gas fees
+        fundAmt.mul(ethers.utils.parseEther('1.1'))
+ 
 
     
         // Generate wallets
@@ -69,8 +84,10 @@ async function init() {
             const nonce = await provider.getTransactionCount(wallet.address, "latest"); 
 
             const rawTx = {
-                gasLimit: ethers.utils.hexlify("0x100000"),
-                gasPrice: estGas,
+                // gasLimit: ethers.utils.hexlify("0x100000"),
+                // gasLimit: maxGas,
+                // gasPrice: estGas,
+                value: ethers.BigNumber.from(price)
             };
             // Populate a transaction with the call data of contract mint function 
             // https://docs.ethers.io/v5/api/signer/#Signer-populateTransaction

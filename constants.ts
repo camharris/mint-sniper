@@ -18,7 +18,7 @@ if (NETWORK == "localhost") {
     constants.PUBLIC_WALLET = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
     constants.PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
     constants.NFTS = {
-               "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0": {
+               "0x04C89607413713Ec9775E14b954286519d836FEf": {
                    "slug": "AdidasOriginalFake",
                    "mintFunc": "purchase", // Normally "mintNFT",
                    "transferFunc": "transferOwnership", // Normally "safeTransferFrom",
