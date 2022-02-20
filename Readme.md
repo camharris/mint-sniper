@@ -9,7 +9,8 @@ This bot uses a primary wallet which it expects to contain the needed funds. It 
 
 
 ### Development 
-Node version `v16.13.2` is being managed with nvm. 
+Node version `v16.13.2` is being managed with nvm. The development environment deploys a fake version of ["Adidas Originals: Into the Metaverse" ](https://etherscan.io/address/0x28472a58a490c5e09a238847f66a68a47cc76f0f#code).
+This environment can be extended by adding additional nft token configurations to `./constants.ts`.
 Initilize local dev environment: 
 ```
 $ cd mint-sniper

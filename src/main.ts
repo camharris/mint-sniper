@@ -31,24 +31,18 @@ async function init() {
         console.log(`Starting batch mint of ${NFTS[nft]['numToMint']} for NFT ${NFTS[nft]['slug']}`);
         var contract = new ethers.Contract(nft, NFTS[nft]['abi'], provider);
         var price = await contract.mintPrice();
+        var tokenId = 0 // Assign actual token Id in mint process
 
         // Calculate what the estimated network gas fees + plush nft price
         // TODO: Should probably add a little more than needed in case gas fees change
         var estGas = await provider.getGasPrice()
         var maxGas = estGas.mul(ethers.BigNumber.from(10))
-        // var maxFeePerGas = await provider. 
 
         var feeData = await provider.getFeeData();
-        // var combinedFees = feeData.gasPrice?.add(
-        //     feeData.maxFeePerGas?.add(
-        //         feeData.maxPriorityFeePerGas
-        //     ));
-        // Triple the combinedFees for 3 potential transactions
-        // combinedFees = combinedFees.mul(ethers.BigNumber.from(3));
 
         // var fundAmt = estGas.add(ethers.BigNumber.from(price));
         var fundAmt = estGas.add(ethers.BigNumber.from(price));
-        // throw in an extra 0.1 eth to account for gas fees
+        // throw in an extra 0.2 eth to account for gas fees
         fundAmt = fundAmt.mul(ethers.BigNumber.from(2))
  
 
@@ -75,6 +69,7 @@ async function init() {
 
         }
 
+
         // Mint with temp wallets
         for (const k in tempWallets) {
             const wallet = tempWallets[k];
@@ -90,8 +85,14 @@ async function init() {
             // https://stackoverflow.com/questions/67803090/how-to-get-erc-721-tokenid
             // Convert hex str to int https://forum.moralis.io/t/convert-hex-string-to-integer-ethers-js-solved/8663/2
             const hexTokenId = Number(receipt.logs[0].topics[3]);
-            const tokenId = parseInt(hexTokenId.toString());
+            tokenId = parseInt(hexTokenId.toString());
+            // This ^ is hard to track. AdidasOriginals always mints tokenID 0
+            // This is going to be specific of the contract in question. read mint()/purchase() in contract 
+            if (NETWORK == "localhost") {
+                tokenId = 0;
+            }
             
+
             console.log(`Mint token: ${tokenId} from ${wallet.address} hash: ${mintTx.hash}`);            
             // Todo validate results of transaction 
             
@@ -101,7 +102,7 @@ async function init() {
                     PUBLIC_WALLET, //to
                     tokenId, //id
                     1,// amount
-                    "0x0"// data
+                    0x0 //empty data
                     );
             console.log(`TransferOwner from ${wallet.address} hash: ${transferTx.hash}`);            
 
@@ -109,7 +110,12 @@ async function init() {
 
             // check if there's remaining funds and return to bot's wallet
             const balance = await provider.getBalance(wallet.address);
-            const balanceAfterGas = balance.sub(estGas);
+
+            // Estimate gas again
+            estGas = await provider.getGasPrice();
+            const gasLimit = 21000;  // The exact cost (in gas) to send to an Externally Owned Account (EOA)
+            // balance after estimated tx fees
+            const balanceAfterGas = balance.sub(estGas.mul(gasLimit));
 
             // if balance is greaterThanEqual zero converted to bignum
             if (balanceAfterGas.gte(ethers.BigNumber.from(0))) {
@@ -119,20 +125,20 @@ async function init() {
                     to: PUBLIC_WALLET,
                     value: balanceAfterGas,
                     nonce: nonce,
-                    gasLimit: ethers.utils.hexlify("0x100000"),
+                    gasLimit: gasLimit,
                     gasPrice: estGas
                 }
                 var resp = await tempSigner.sendTransaction(tx);
-                console.log(`Return funds from ${wallet.address} hash: ${resp.hash}`)                
+                console.log(`Return funds from ${wallet.address} hash: ${resp.hash}`);               
             }           
         }
 
 
-            
-        
-
-
+        console.log(`Minting of ${NFTS[nft]['slug']} has completed`);
+        var walletTokenBalance = await contract.balanceOf(PUBLIC_WALLET, tokenId)
+        console.log(`Bot's wallet balacne of TokenId: #${tokenId} = ${walletTokenBalance.toString()}`);
     }
+    process.exit(0)
     
 }
 
