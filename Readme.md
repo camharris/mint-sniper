@@ -23,6 +23,7 @@ $ npx hardhat run --network localhost scripts/deploy.js # To deploy test contrac
 $ tsc-node src/main.ts
 ```
 
+#### Dev tools 
 Getting a wallets balance locally:
 ```
 $ npx hardhat balance --network localhost --account 0x83369c9e2DA6a0c81AB0914974ca183DE393FDc3 
@@ -30,7 +31,7 @@ $ npx hardhat balance --network localhost --account 0x83369c9e2DA6a0c81AB0914974
 ```
 
 
-### Running
+### Running in Prod
 Before running export the private key for the primary wallet
 ```
 export WALLET_PRIVATE_KEY=supersecretprivatekey 
