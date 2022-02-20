@@ -2,6 +2,7 @@ import * as ethers from "ethers";
 import { Wallet } from "ethers";
 import { FlashbotsBundleProvider } from "@flashbots/ethers-provider-bundle";
 import {WALLET_PRIVATE_KEY, PROVIDER_WSS, FLASHBOTS_ENDPOINT, PUBLIC_WALLET, NFTS, NETWORK } from "../constants";
+import { adidasOriginalFakeAbi } from "./abi";
 
 const provider = new ethers.providers.WebSocketProvider(PROVIDER_WSS);
 const mainWallet = new ethers.Wallet(WALLET_PRIVATE_KEY);
@@ -13,7 +14,7 @@ function createTempWallets(num: number){
     var wallets: Wallet[] = [];
     for (let i = 0; i < num; i++){
         var wallet = ethers.Wallet.createRandom()
-        console.log(`created wallet #${i+1}: ${wallet.address} : ${wallet.privateKey}`)
+        // console.log(`created wallet #${i+1}: ${wallet.address} : ${wallet.privateKey}`)
         wallets?.push(wallet)
     }
     return wallets
@@ -33,7 +34,7 @@ async function init() {
 
         // Calculate what the estimated network gas fees + plush nft price
         // TODO: Should probably add a little more than needed in case gas fees change
-        var estGas = await provider.getGasPrice();
+        var estGas = await provider.getGasPrice()
         var maxGas = estGas.mul(ethers.BigNumber.from(10))
         // var maxFeePerGas = await provider. 
 
@@ -48,7 +49,7 @@ async function init() {
         // var fundAmt = estGas.add(ethers.BigNumber.from(price));
         var fundAmt = estGas.add(ethers.BigNumber.from(price));
         // throw in an extra 0.1 eth to account for gas fees
-        fundAmt.mul(ethers.utils.parseEther('1.1'))
+        fundAmt = fundAmt.mul(ethers.BigNumber.from(2))
  
 
     
@@ -68,8 +69,7 @@ async function init() {
                 gasLimit: ethers.utils.hexlify("0x100000"), // 100000,
                 gasPrice: estGas
             }
-
-            console.log(`Funding wallet: ${wallet.address}`);
+            console.log(`Funding wallet: ${wallet.address} with ${ethers.utils.formatEther(fundAmt.toString())} ETH`);
             const txObj = await walletSigner.sendTransaction(tx);
             console.log(txObj.hash);
 
@@ -79,27 +79,31 @@ async function init() {
         for (const k in tempWallets) {
             const wallet = tempWallets[k];
             const tempSigner = wallet.connect(provider);
-            
-            // const tempContract = await contract.connect(tempSigner);
+
+            const tempContractInstance = new ethers.Contract(nft, adidasOriginalFakeAbi, tempSigner)
+
             const nonce = await provider.getTransactionCount(wallet.address, "latest"); 
 
-            const rawTx = {
-                // gasLimit: ethers.utils.hexlify("0x100000"),
-                // gasLimit: maxGas,
-                // gasPrice: estGas,
-                value: ethers.BigNumber.from(price)
-            };
-            // Populate a transaction with the call data of contract mint function 
-            // https://docs.ethers.io/v5/api/signer/#Signer-populateTransaction
-            const unsignedMintTx = await contract.populateTransaction.purchase(1, rawTx);
-            var resp = await tempSigner.sendTransaction(unsignedMintTx);
-            console.log(`Mint from ${wallet.address} hash: ${resp.hash}`);            
-            // Todo validate results of resp/transaction 
+            const mintTx = await tempContractInstance.purchase(1, {value: price});
+            const receipt = await provider.getTransactionReceipt(mintTx.hash);
+            // look up token ID
+            // https://stackoverflow.com/questions/67803090/how-to-get-erc-721-tokenid
+            // Convert hex str to int https://forum.moralis.io/t/convert-hex-string-to-integer-ethers-js-solved/8663/2
+            const hexTokenId = Number(receipt.logs[0].topics[3]);
+            const tokenId = parseInt(hexTokenId.toString());
+            
+            console.log(`Mint token: ${tokenId} from ${wallet.address} hash: ${mintTx.hash}`);            
+            // Todo validate results of transaction 
             
             // If mints are successful transfer ownership 
-            const unsignedTransferTx = await contract.populateTransaction.transferOwnership(PUBLIC_WALLET, rawTx);
-            var resp = await tempSigner.sendTransaction(unsignedTransferTx);
-            console.log(`TransferOwner from ${wallet.address} hash: ${resp.hash}`);            
+            const transferTx = await tempContractInstance.safeTransferFrom(
+                    wallet.address, //from    
+                    PUBLIC_WALLET, //to
+                    tokenId, //id
+                    1,// amount
+                    "0x0"// data
+                    );
+            console.log(`TransferOwner from ${wallet.address} hash: ${transferTx.hash}`);            
 
             // Todo maybe bundle these two transactions and send them to flashbots..
 

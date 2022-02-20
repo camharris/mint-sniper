@@ -1,32 +1,49 @@
 import { adidasOriginalFakeAbi } from "./src/abi";
 
 
-export const NETWORK = process.env.ETH_NETWORK || "goerli";
+export const NETWORK = process.env.ETH_NETWORK || "localhost";
 
 export const DRY_RUN = process.env.DRY_RUN?.toLowerCase() || "true";
-
-if (process.env.WALLET_PRIVATE_KEY === undefined) {
-    console.error("Please provide WALLET_PRIVATE_KEY env")
-    process.exit(1)
-}
-
+//interface nft 
 
 var constants = Object();
+constants.NFTS = Object();
+constants.WALLET_PRIVATE_KEY = process.env.WALLET_PRIVATE_KEY || undefined
+
+
+
+
 if (NETWORK == "localhost") {
     constants.PROVIDER_WSS = "ws://localhost:8545";
     constants.FLASHBOTS_ENDPOINT = "https://relay-goerli.flashbots.net";
     constants.PUBLIC_WALLET = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
-    constants.PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+    constants.WALLET_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
     constants.NFTS = {
-               "0x04C89607413713Ec9775E14b954286519d836FEf": {
-                   "slug": "AdidasOriginalFake",
-                   "mintFunc": "purchase", // Normally "mintNFT",
-                   "transferFunc": "transferOwnership", // Normally "safeTransferFrom",
-                   "priceFunc": "mintPrice", // Normally "mintPrice"
-                   "numToMint": 10,
-                    "abi": adidasOriginalFakeAbi
-               }
-    }
+                    "0x5FbDB2315678afecb367f032d93F642f64180aa3": {
+                        "slug": "AdidasOriginalFake",
+                        "mintFunc": "purchase", // Normally "mintNFT",
+                        "transferFunc": "safeTransferFrom", // Normally "safeTransferFrom",
+                        "priceFunc": "mintPrice", // Normally "mintPrice"
+                        "numToMint": 10,
+                        "abi": adidasOriginalFakeAbi
+                    }
+        }
+    // constants.NFTS.address = "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+    // constants.NFTS.slug = "AdidasOriginalFake";
+    // constants.NFTS.mintFunc = "purchase"; // Normally "mintNFT",
+    // constants.NFTS.transferFunc = "transferOwnership"; // Normally "safeTransferFrom",
+    // constants.NFTS.priceFunc = "mintPrice"; // Normally "mintPrice"
+    // constants.NFTS.numToMint = 10;
+    // constants.NFTS.abi = adidasOriginalFakeAbi
+               
+    
+}
+
+
+if (process.env.WALLET_PRIVATE_KEY === undefined && (NETWORK != "localhost")) {
+    constants.WALLET_PRIVATE_KEY = process.env.WALLET_PRIVATE_KEY
+    console.error("Please provide WALLET_PRIVATE_KEY env")
+    process.exit(1)
 }
 
 if (NETWORK == "goerli") {
@@ -62,7 +79,7 @@ if (NETWORK == "rinkeby") {
 }
 
 
-export const WALLET_PRIVATE_KEY = process.env.WALLET_PRIVATE_KEY;
+export const WALLET_PRIVATE_KEY = constants.WALLET_PRIVATE_KEY;
 export const PROVIDER_WSS = constants.PROVIDER_WSS;
 export const FLASHBOTS_ENDPOINT = constants.FLASHBOTS_ENDPOINT;
 export const PUBLIC_WALLET = constants.PUBLIC_WALLET;

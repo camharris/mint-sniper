@@ -10,9 +10,27 @@ This bot uses a primary wallet which it expects to contain the needed funds. It 
 
 ### Development 
 Node version `v16.13.2` is being managed with nvm. 
+Initilize local dev environment: 
+```
+$ cd mint-sniper
+$ npm ci
+~~~
+$ npx hardhat node 
+# In another shell
+$ npx hardhat compile
+$ npx hardhat run --network localhost scripts/deploy.js # To deploy test contract
+$ tsc-node src/main.ts
+```
+
+Getting a wallets balance locally:
+```
+$ npx hardhat balance --network localhost --account 0x83369c9e2DA6a0c81AB0914974ca183DE393FDc3 
+0.100000001807702197 ETH
+```
+
 
 ### Running
 Before running export the private key for the primary wallet
 ```
-export WALLET_PRIVATE_KEY=supersecretprivatekey
+export WALLET_PRIVATE_KEY=supersecretprivatekey 
 ```
