@@ -1,5 +1,5 @@
 import * as ethers from "ethers";
-import { Wallet } from "ethers";
+import { Wallet, Contract } from "ethers";
 import { FlashbotsBundleProvider } from "@flashbots/ethers-provider-bundle";
 import {
     WALLET_PRIVATE_KEY,
@@ -9,7 +9,8 @@ import {
     NFTS,
     NETWORK,
 } from "../constants";
-import { adidasOriginalFakeAbi } from "./abi";
+import { adidasOriginalFakeAbi, tubbiesAbi } from "./abi";
+import { tempWalletKeys } from "./secrets";
 import { Minter } from "./Minter";
 
 const provider = new ethers.providers.WebSocketProvider(PROVIDER_WSS);
@@ -20,71 +21,123 @@ function createTempWallets(num: number) {
     var wallets: Wallet[] = [];
     for (let i = 0; i < num; i++) {
         var wallet = ethers.Wallet.createRandom();
-        // console.log(`created wallet #${i+1}: ${wallet.address} : ${wallet.privateKey}`)
+        console.log(
+            `created wallet #${i + 1}: ${wallet.address} : ${wallet.privateKey}`
+        );
         wallets?.push(wallet);
     }
     return wallets;
 }
 
+async function fundWallets(wallets, nonce, fundAmt, estGas) {
+    // Fund wallets
+    for (const k in wallets) {
+        const wallet = wallets[k];
+
+        var tx = {
+            from: PUBLIC_WALLET,
+            to: wallet.address,
+            value: fundAmt,
+            nonce: nonce,
+            gasLimit: ethers.utils.hexlify("0x100000"), // 100000,
+            gasPrice: estGas,
+        };
+        console.log(
+            `Funding wallet: ${wallet.address} with ${ethers.utils.formatEther(
+                fundAmt.toString()
+            )} ETH`
+        );
+        const txObj = await walletSigner.sendTransaction(tx);
+        console.log(txObj.hash);
+        nonce++;
+    }
+}
+
+function loadTempWallets() {
+    var wallets: Wallet[] = [];
+    for (let i = 0; i < tempWalletKeys.length; i++) {
+        var wallet = new ethers.Wallet(tempWalletKeys[i]);
+        console.log(`loaded wallet ${wallet.address}`);
+        wallets?.push(wallet);
+    }
+    return wallets;
+}
+
+const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
 async function init() {
-    //   const flashbotsProvider = await FlashbotsBundleProvider.create(
-    //     provider,
-    //     ethers.Wallet.createRandom(),
-    //     FLASHBOTS_ENDPOINT
-    //   );
+    const flashbotsProvider = await FlashbotsBundleProvider.create(
+        provider,
+        ethers.Wallet.createRandom(),
+        FLASHBOTS_ENDPOINT
+    );
     console.log(`RUNNING ON NETWORK: ${NETWORK}`);
     for (var nft in NFTS) {
         console.log(
             `Starting batch mint of ${NFTS[nft]["numToMint"]} for NFT ${NFTS[nft]["slug"]}`
         );
         var contract = new ethers.Contract(nft, NFTS[nft]["abi"], provider);
-        var price = await contract.mintPrice();
+
+        // Hard code price for Tubbie mint
+        var price = ethers.utils.parseUnits("0.1", "ether");
+        // var price = await contract.mintPrice();
+
         var tokenId = 0; // Assign actual token Id in mint process
 
         // Calculate what the estimated network gas fees + plush nft price
         // TODO: Should probably add a little more than needed in case gas fees change
         var estGas = await provider.getGasPrice();
-        var maxGas = estGas.mul(ethers.BigNumber.from(10));
+        // estGas = estGas.mul(ethers.BigNumber.from(2)) // double to cover tansferFrom amount
 
-        var feeData = await provider.getFeeData();
+        // The max gas we're willing to pay 0.2  which is twice the token price
+        var maxGas = estGas.add(ethers.utils.parseUnits("0.2", "ether"));
 
-        // var fundAmt = estGas.add(ethers.BigNumber.from(price));
-        var fundAmt = estGas.add(ethers.BigNumber.from(price));
-        // throw in an extra 0.2 eth to account for gas fees
-        fundAmt = fundAmt.mul(ethers.BigNumber.from(2));
+        var fundAmt = maxGas.add(price);
 
         // Generate wallets
-        const tempWallets = createTempWallets(NFTS[nft]["numToMint"]);
+        // const tempWallets = createTempWallets(NFTS[nft]['numToMint']);
+        const tempWallets = loadTempWallets();
 
-        // Fund wallets
-        for (const k in tempWallets) {
-            const wallet = tempWallets[k];
-            var nonce = await provider.getTransactionCount(
-                PUBLIC_WALLET,
-                "latest"
-            );
+        var nonce = await provider.getTransactionCount(PUBLIC_WALLET, "latest");
 
-            var tx = {
-                from: PUBLIC_WALLET,
-                to: wallet.address,
-                value: fundAmt,
-                nonce: nonce,
-                gasLimit: ethers.utils.hexlify("0x100000"), // 100000,
-                gasPrice: estGas,
-            };
-            console.log(
-                `Funding wallet: ${
-                    wallet.address
-                } with ${ethers.utils.formatEther(fundAmt.toString())} ETH`
-            );
-            const txObj = await walletSigner.sendTransaction(tx);
-            console.log(txObj.hash);
+        // Sleep until mint start time
+        const startTime = await contract.startSaleTimestamp();
+        let currentDate = Date.now();
+        console.log(`Sleeping until ${startTime}`);
+        while (currentDate < startTime) {
+            await sleep(1000);
+            currentDate = Date.now();
         }
 
         // Mint with temp wallets
         for (const k in tempWallets) {
             const wallet = tempWallets[k];
             const tempSigner = wallet.connect(provider);
+            const nonce = await provider.getTransactionCount(
+                wallet.address,
+                "latest"
+            );
+
+            const tempContractInstance = new ethers.Contract(
+                nft,
+                NFTS[nft]["abi"],
+                tempSigner
+            );
+
+            const feeData = await provider.getFeeData();
+
+            // CHANGE THE MINT FUNCTION FOR TUBBIES !!!!
+            // const mintTx = await tempContractInstance.purchase(1, {value: price});
+            const mintTx = await tempContractInstance.mintFromSale(
+                1, // number to mint
+                {
+                    value: price,
+                    maxFeePerGas: feeData["maxFeePerGas"]?.mul(2),
+                    maxPriorityFeePerGas: feeData["maxPriorityFeePerGas"], //?.mul(2),
+                    // gasPrice: feeData["gasPrice"]?.mul(2),
+                    // gasLimit: feeData["gasPrice"], //?.mul(2)
+                }
+            );
 
             // const tempContractInstance = new ethers.Contract(
             //   nft,
@@ -100,7 +153,8 @@ async function init() {
             );
             await minter.setup();
 
-            const mintTx = await minter.mint1155(1);
+            // THIS NEEDS TO BE IN PLACE, NOT THE ABOVE
+            // const mintTx = await minter.mint1155(1);
             const receipt = await provider.getTransactionReceipt(mintTx.hash);
             // look up token ID
             // https://stackoverflow.com/questions/67803090/how-to-get-erc-721-tokenid
@@ -109,17 +163,28 @@ async function init() {
             tokenId = parseInt(hexTokenId.toString());
             // This ^ is hard to track. AdidasOriginals always mints tokenID 0
             // This is going to be specific of the contract in question. read mint()/purchase() in contract
-            if (NETWORK == "localhost") {
-                tokenId = 0;
-            }
+            // if (NETWORK == "localhost") {
+            //     tokenId = 0;
+            // }
 
             console.log(
                 `Mint token: ${tokenId} from ${wallet.address} hash: ${mintTx.hash}`
             );
             // Todo validate results of transaction
+        }
+
+        // Transfer nft
+        for (const k in tempWallets) {
+            const wallet = tempWallets[k];
+            const tempSigner = wallet.connect(provider);
+            const tempContractInstance = new ethers.Contract(
+                nft,
+                NFTS[nft]["abi"],
+                tempSigner
+            );
 
             // If mints are successful transfer ownership
-            const transferTx = await minter.contractInstance.safeTransferFrom(
+            const transferTx = await tempContractInstance.safeTransferFrom(
                 wallet.address, //from
                 PUBLIC_WALLET, //to
                 tokenId, //id
@@ -131,7 +196,17 @@ async function init() {
             );
 
             // Todo maybe bundle these two transactions and send them to flashbots..
+        }
 
+        // Drain funds from temp wallets
+        for (const k in tempWallets) {
+            const wallet = tempWallets[k];
+            const tempSigner = wallet.connect(provider);
+
+            var nonce = await provider.getTransactionCount(
+                wallet.address,
+                "latest"
+            );
             // check if there's remaining funds and return to bot's wallet
             const balance = await provider.getBalance(wallet.address);
 

@@ -22,5 +22,8 @@
     "flashbots": "^1.0.0",
     "hardhat": "^2.8.3",
     "web3": "^1.7.0"
+  },
+  "dependencies": {
+    "delay": "^5.0.0"
   }
 }
