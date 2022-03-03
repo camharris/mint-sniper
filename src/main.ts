@@ -53,6 +53,68 @@ async function fundWallets(wallets, nonce, fundAmt, estGas) {
     }
 }
 
+async function transferNfts(fromWallets, nft, tokenId) {
+    for (const k in fromWallets) {
+        const wallet = fromWallets[k];
+        const tempSigner = wallet.connect(provider);
+        const tempContractInstance = new ethers.Contract(
+            nft,
+            NFTS[nft]["abi"],
+            tempSigner
+        );
+
+        // If mints are successful transfer ownership
+        const transferTx = await tempContractInstance.safeTransferFrom(
+            wallet.address, //from
+            PUBLIC_WALLET, //to
+            tokenId, //id
+            1, // amount
+            0x0 //empty data
+        );
+        console.log(
+            `TransferOwner from ${wallet.address} hash: ${transferTx.hash}`
+        );
+
+        // Todo maybe bundle these two transactions and send them to flashbots..
+    }
+}
+
+async function drainFunds(fromWallets, estGas) {
+    for (const k in fromWallets) {
+        const wallet = fromWallets[k];
+        const tempSigner = wallet.connect(provider);
+
+        // check if there's remaining funds and return to bot's wallet
+        const balance = await provider.getBalance(wallet.address);
+
+        // Estimate gas again
+        estGas = await provider.getGasPrice();
+        const gasLimit = 21000; // The exact cost (in gas) to send to an Externally Owned Account (EOA)
+        // balance after estimated tx fees
+        const balanceAfterGas = balance.sub(estGas.mul(gasLimit));
+
+        // if balance is greaterThanEqual zero converted to bignum
+        if (balanceAfterGas.gte(ethers.BigNumber.from(0))) {
+            const nonce = await provider.getTransactionCount(
+                wallet.address,
+                "latest"
+            );
+            const tx = {
+                from: wallet.address,
+                to: PUBLIC_WALLET,
+                value: balanceAfterGas,
+                nonce: nonce,
+                gasLimit: gasLimit,
+                gasPrice: estGas,
+            };
+            var resp = await tempSigner.sendTransaction(tx);
+            console.log(
+                `Return funds from ${wallet.address} hash: ${resp.hash}`
+            );
+        }
+    }
+}
+
 function loadTempWallets() {
     var wallets: Wallet[] = [];
     for (let i = 0; i < tempWalletKeys.length; i++) {
@@ -64,13 +126,16 @@ function loadTempWallets() {
 }
 
 const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+async function sleepTill(time) {
+    let currentDate = Date.now();
+    console.log(`Sleeping until ${time}`);
+    while (currentDate < time) {
+        await sleep(1000);
+        currentDate = Date.now();
+    }
+}
 
 async function init() {
-    const flashbotsProvider = await FlashbotsBundleProvider.create(
-        provider,
-        ethers.Wallet.createRandom(),
-        FLASHBOTS_ENDPOINT
-    );
     console.log(`RUNNING ON NETWORK: ${NETWORK}`);
     for (var nft in NFTS) {
         console.log(
@@ -89,34 +154,18 @@ async function init() {
         var estGas = await provider.getGasPrice();
         // estGas = estGas.mul(ethers.BigNumber.from(2)) // double to cover tansferFrom amount
 
-        // The max gas we're willing to pay 0.2  which is twice the token price
-        var maxGas = estGas.add(ethers.utils.parseUnits("0.2", "ether"));
-
-        var fundAmt = maxGas.add(price);
-
         // Generate wallets
         // const tempWallets = createTempWallets(NFTS[nft]['numToMint']);
         const tempWallets = loadTempWallets();
 
-        var nonce = await provider.getTransactionCount(PUBLIC_WALLET, "latest");
-
         // Sleep until mint start time
         const startTime = await contract.startSaleTimestamp();
-        let currentDate = Date.now();
-        console.log(`Sleeping until ${startTime}`);
-        while (currentDate < startTime) {
-            await sleep(1000);
-            currentDate = Date.now();
-        }
+        await sleepTill(startTime);
 
         // Mint with temp wallets
         for (const k in tempWallets) {
             const wallet = tempWallets[k];
             const tempSigner = wallet.connect(provider);
-            const nonce = await provider.getTransactionCount(
-                wallet.address,
-                "latest"
-            );
 
             const tempContractInstance = new ethers.Contract(
                 nft,
@@ -126,6 +175,7 @@ async function init() {
 
             const feeData = await provider.getFeeData();
 
+            // *** THIDS SHOULD BE THE MODUKAR FUNCTION
             // CHANGE THE MINT FUNCTION FOR TUBBIES !!!!
             // const mintTx = await tempContractInstance.purchase(1, {value: price});
             const mintTx = await tempContractInstance.mintFromSale(
@@ -138,12 +188,6 @@ async function init() {
                     // gasLimit: feeData["gasPrice"], //?.mul(2)
                 }
             );
-
-            // const tempContractInstance = new ethers.Contract(
-            //   nft,
-            //   adidasOriginalFakeAbi,
-            //   tempSigner
-            // );
 
             const minter = new Minter(
                 nft,
@@ -174,70 +218,13 @@ async function init() {
         }
 
         // Transfer nft
-        for (const k in tempWallets) {
-            const wallet = tempWallets[k];
-            const tempSigner = wallet.connect(provider);
-            const tempContractInstance = new ethers.Contract(
-                nft,
-                NFTS[nft]["abi"],
-                tempSigner
-            );
-
-            // If mints are successful transfer ownership
-            const transferTx = await tempContractInstance.safeTransferFrom(
-                wallet.address, //from
-                PUBLIC_WALLET, //to
-                tokenId, //id
-                1, // amount
-                0x0 //empty data
-            );
-            console.log(
-                `TransferOwner from ${wallet.address} hash: ${transferTx.hash}`
-            );
-
-            // Todo maybe bundle these two transactions and send them to flashbots..
-        }
-
+        // I think some things are broken here due to the fact that testin is on ERC1155. The token ID will change for 721
+        // We will need to do some "transfer all tokens this address owns for this contract" thing instead.
+        await transferNfts(tempWallets, nft, tokenId);
         // Drain funds from temp wallets
-        for (const k in tempWallets) {
-            const wallet = tempWallets[k];
-            const tempSigner = wallet.connect(provider);
-
-            var nonce = await provider.getTransactionCount(
-                wallet.address,
-                "latest"
-            );
-            // check if there's remaining funds and return to bot's wallet
-            const balance = await provider.getBalance(wallet.address);
-
-            // Estimate gas again
-            estGas = await provider.getGasPrice();
-            const gasLimit = 21000; // The exact cost (in gas) to send to an Externally Owned Account (EOA)
-            // balance after estimated tx fees
-            const balanceAfterGas = balance.sub(estGas.mul(gasLimit));
-
-            // if balance is greaterThanEqual zero converted to bignum
-            if (balanceAfterGas.gte(ethers.BigNumber.from(0))) {
-                const nonce = await provider.getTransactionCount(
-                    wallet.address,
-                    "latest"
-                );
-                const tx = {
-                    from: wallet.address,
-                    to: PUBLIC_WALLET,
-                    value: balanceAfterGas,
-                    nonce: nonce,
-                    gasLimit: gasLimit,
-                    gasPrice: estGas,
-                };
-                var resp = await tempSigner.sendTransaction(tx);
-                console.log(
-                    `Return funds from ${wallet.address} hash: ${resp.hash}`
-                );
-            }
-        }
-
+        drainFunds(tempWallets, estGas);
         console.log(`Minting of ${NFTS[nft]["slug"]} has completed`);
+
         var walletTokenBalance = await contract.balanceOf(
             PUBLIC_WALLET,
             tokenId
