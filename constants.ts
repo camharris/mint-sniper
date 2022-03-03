@@ -1,4 +1,4 @@
-import { adidasOriginalFakeAbi } from "./src/abi";
+import { adidasOriginalFakeAbi, tubbiesAbi } from "./src/abi";
 
 
 export const NETWORK = process.env.ETH_NETWORK || "localhost";
@@ -20,22 +20,14 @@ if (NETWORK == "localhost") {
     constants.WALLET_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
     constants.NFTS = {
                     "0x5FbDB2315678afecb367f032d93F642f64180aa3": {
-                        "slug": "AdidasOriginalFake",
-                        "mintFunc": "purchase", // Normally "mintNFT",
+                        "slug": "Tubbies",
+                        "mintFunc": "mintFromSale", // Normally "mintNFT",
                         "transferFunc": "safeTransferFrom", // Normally "safeTransferFrom",
-                        "priceFunc": "mintPrice", // Normally "mintPrice"
-                        "numToMint": 10,
-                        "abi": adidasOriginalFakeAbi
+                        // "priceFunc": "mintPrice", // Normally "mintPrice"
+                        "numToMint": 3,
+                        "abi": tubbiesAbi
                     }
         }
-    // constants.NFTS.address = "0x5FbDB2315678afecb367f032d93F642f64180aa3"
-    // constants.NFTS.slug = "AdidasOriginalFake";
-    // constants.NFTS.mintFunc = "purchase"; // Normally "mintNFT",
-    // constants.NFTS.transferFunc = "transferOwnership"; // Normally "safeTransferFrom",
-    // constants.NFTS.priceFunc = "mintPrice"; // Normally "mintPrice"
-    // constants.NFTS.numToMint = 10;
-    // constants.NFTS.abi = adidasOriginalFakeAbi
-               
     
 }
 
@@ -44,6 +36,24 @@ if (process.env.WALLET_PRIVATE_KEY === undefined && (NETWORK != "localhost")) {
     constants.WALLET_PRIVATE_KEY = process.env.WALLET_PRIVATE_KEY
     console.error("Please provide WALLET_PRIVATE_KEY env")
     process.exit(1)
+}
+
+
+if (NETWORK == "mainnet") {
+    constants.PROVIDER_WSS = "wss://mainnet.infura.io/ws/v3/4c975d4f46b74da09a345e92ddace875";
+    constants.FLASHBOTS_ENDPOINT = "https://relay.flashbots.net";
+    constants.PUBLIC_WALLET = "0xb1d9f6aa8cA5b5e37FdceA9a5891bc11Ad6B0322";
+    //constants.WALLET_PRIVATE_KEY = ""
+    constants.NFTS = {
+                    "0xCa7cA7BcC765F77339bE2d648BA53ce9c8a262bD": {
+                        "slug": "Tubbies",
+                        "mintFunc": "mintFromSale", // Normally "mintNFT",
+                        "transferFunc": "safeTransferFrom", // Normally "safeTransferFrom",
+                        //"priceFunc": "mintPrice", // Normally "mintPrice"
+                        "numToMint": 3,
+                        "abi": tubbiesAbi
+                    }
+        }
 }
 
 if (NETWORK == "goerli") {

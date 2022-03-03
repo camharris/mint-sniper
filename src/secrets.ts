@@ -1,0 +1,5 @@
+export const tempWalletKeys = [
+    'ea16c3ec47d6ece7ad1ac88cd7f9950bcd42cb03842143c3ed1b798b0ab194c5',
+    'bd3a39b894cad601ec1c5270cafdb07b58283d6f7befa6051e04b752c80d8717',
+    'e1e5dc35d62643d7754864a497b92207898c166bc8b921c6c87a4ab323c79a59'
+];
