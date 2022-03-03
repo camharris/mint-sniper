@@ -54,6 +54,8 @@ async function fundWallets(wallets, nonce, fundAmt, estGas) {
 }
 
 async function transferNfts(fromWallets, nft, tokenId) {
+    // I think some things are broken here due to the fact that testin is on ERC1155. The token ID will change for 721
+    // We will need to do some "transfer all tokens this address owns for this contract" thing instead.
     for (const k in fromWallets) {
         const wallet = fromWallets[k];
         const tempSigner = wallet.connect(provider);
@@ -115,6 +117,10 @@ async function drainFunds(fromWallets, estGas) {
     }
 }
 
+async function getBalance(contract, tokenId) {
+    return await contract.balanceOf(PUBLIC_WALLET, tokenId);
+}
+
 function loadTempWallets() {
     var wallets: Wallet[] = [];
     for (let i = 0; i < tempWalletKeys.length; i++) {
@@ -147,15 +153,12 @@ async function init() {
         var price = ethers.utils.parseUnits("0.1", "ether");
         // var price = await contract.mintPrice();
 
-        var tokenId = 0; // Assign actual token Id in mint process
-
         // Calculate what the estimated network gas fees + plush nft price
         // TODO: Should probably add a little more than needed in case gas fees change
         var estGas = await provider.getGasPrice();
-        // estGas = estGas.mul(ethers.BigNumber.from(2)) // double to cover tansferFrom amount
 
-        // Generate wallets
-        // const tempWallets = createTempWallets(NFTS[nft]['numToMint']);
+        // Generate/Get wallets
+        // const tempWallets = createTempWallets(NFTS[nft]['numToMint']); // only for testing?
         const tempWallets = loadTempWallets();
 
         // Sleep until mint start time
@@ -164,6 +167,7 @@ async function init() {
 
         // Mint with temp wallets
         for (const k in tempWallets) {
+            var tokenId: number = 0; // Assign actual token Id in mint process
             const wallet = tempWallets[k];
             const tempSigner = wallet.connect(provider);
 
@@ -200,6 +204,7 @@ async function init() {
             // THIS NEEDS TO BE IN PLACE, NOT THE ABOVE
             // const mintTx = await minter.mint1155(1);
             const receipt = await provider.getTransactionReceipt(mintTx.hash);
+
             // look up token ID
             // https://stackoverflow.com/questions/67803090/how-to-get-erc-721-tokenid
             // Convert hex str to int https://forum.moralis.io/t/convert-hex-string-to-integer-ethers-js-solved/8663/2
@@ -207,9 +212,6 @@ async function init() {
             tokenId = parseInt(hexTokenId.toString());
             // This ^ is hard to track. AdidasOriginals always mints tokenID 0
             // This is going to be specific of the contract in question. read mint()/purchase() in contract
-            // if (NETWORK == "localhost") {
-            //     tokenId = 0;
-            // }
 
             console.log(
                 `Mint token: ${tokenId} from ${wallet.address} hash: ${mintTx.hash}`
@@ -217,23 +219,13 @@ async function init() {
             // Todo validate results of transaction
         }
 
-        // Transfer nft
-        // I think some things are broken here due to the fact that testin is on ERC1155. The token ID will change for 721
-        // We will need to do some "transfer all tokens this address owns for this contract" thing instead.
-        await transferNfts(tempWallets, nft, tokenId);
-        // Drain funds from temp wallets
-        drainFunds(tempWallets, estGas);
+        // TODO: Transfer nft
+        // TODO: Drain funds from temp wallets
         console.log(`Minting of ${NFTS[nft]["slug"]} has completed`);
-
-        var walletTokenBalance = await contract.balanceOf(
-            PUBLIC_WALLET,
-            tokenId
-        );
-        console.log(
-            `Bot's wallet balacne of TokenId: #${tokenId} = ${walletTokenBalance.toString()}`
-        );
+        // TODO: Get main wallet balance
+        console.log(`Bot's wallet balance of Token: = ${undefined}`);
     }
-    process.exit(0);
+    provider.destroy();
 }
 
 init();
