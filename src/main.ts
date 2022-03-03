@@ -11,7 +11,6 @@ import {
 } from "../constants";
 import { adidasOriginalFakeAbi, tubbiesAbi } from "./abi";
 import { tempWalletKeys } from "./secrets";
-// import * as delay from "delay";
 
 const provider = new ethers.providers.WebSocketProvider(PROVIDER_WSS);
 const mainWallet = new ethers.Wallet(WALLET_PRIVATE_KEY);
@@ -29,6 +28,30 @@ function createTempWallets(num: number) {
     return wallets;
 }
 
+async function fundWallets(wallets, nonce, fundAmt, estGas) {
+    // Fund wallets
+    for (const k in wallets) {
+        const wallet = wallets[k];
+
+        var tx = {
+            from: PUBLIC_WALLET,
+            to: wallet.address,
+            value: fundAmt,
+            nonce: nonce,
+            gasLimit: ethers.utils.hexlify("0x100000"), // 100000,
+            gasPrice: estGas,
+        };
+        console.log(
+            `Funding wallet: ${wallet.address} with ${ethers.utils.formatEther(
+                fundAmt.toString()
+            )} ETH`
+        );
+        const txObj = await walletSigner.sendTransaction(tx);
+        console.log(txObj.hash);
+        nonce++;
+    }
+}
+
 function loadTempWallets() {
     var wallets: Wallet[] = [];
     for (let i = 0; i < tempWalletKeys.length; i++) {
@@ -39,7 +62,7 @@ function loadTempWallets() {
     return wallets;
 }
 
-const delay2 = (ms: number) => new Promise((res) => setTimeout(res, ms));
+const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
 async function init() {
     const flashbotsProvider = await FlashbotsBundleProvider.create(
@@ -74,31 +97,13 @@ async function init() {
         const tempWallets = loadTempWallets();
 
         var nonce = await provider.getTransactionCount(PUBLIC_WALLET, "latest");
-        // Fund wallets
-        // for (const k in tempWallets) {
-        //     const wallet = tempWallets[k];
 
-        //     var tx = {
-        //         from: PUBLIC_WALLET,
-        //         to: wallet.address,
-        //         value: fundAmt,
-        //         nonce: nonce,
-        //         gasLimit: ethers.utils.hexlify("0x100000"), // 100000,
-        //         gasPrice: estGas
-        //     }
-        //     console.log(`Funding wallet: ${wallet.address} with ${ethers.utils.formatEther(fundAmt.toString())} ETH`);
-        //     const txObj = await walletSigner.sendTransaction(tx);
-        //     console.log(txObj.hash);
-        //     nonce++;
-        // }
-
-        // Sleep until start tune
+        // Sleep until mint start time
         const startTime = await contract.startSaleTimestamp();
         let currentDate = Date.now();
         console.log(`Sleeping until ${startTime}`);
         while (currentDate < startTime) {
-            await delay2(1000);
-            // await delay(10000);
+            await sleep(1000);
             currentDate = Date.now();
         }
 
